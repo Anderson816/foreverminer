@@ -8,7 +8,7 @@ WALLET = 'ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQv
 THREADS = str(os.cpu_count() or 4)
 COIN = 'zeph'
 TLS = True
-XMRIG_URL = 'https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-x64.tar.gz'
+XMRIG_URL = 'https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz'
 # ============================
 
 bot = telebot.TeleBot(BOT_TOKEN)
