@@ -11,7 +11,7 @@ WALLET = os.getenv("WALLET", "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5z
 POOL = "fr.zephyr.herominers.com:1123"
 ALGO = "rx/0"
 WORKER = "railway-" + socket.gethostname()
-PASS = AAAA  # Worker name shown on pool
+PASS = WORKER  # Worker name shown on pool
 
 def run_miner():
     try:
