@@ -1,0 +1,14 @@
+[Unit]
+Description=Crypto Miner
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/administrator/forever.py.2
+User=administrator  # Change to your desired user
+WorkingDirectory=/home/administrator
+Restart=always
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
