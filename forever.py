@@ -19,17 +19,15 @@ TAR_URL = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0
 os.makedirs(XM_DIR, exist_ok=True)
 
 def download_xmrig():
+def download_xmrig():
     """Download and extract the miner binary."""
     tar_path = os.path.join(XM_DIR, "xmrig.tar.gz")
     try:
         # Download the tarball from GitHub
         urlretrieve(TAR_URL, tar_path)
         with tarfile.open(tar_path, "r:gz") as tar:
-            for member in tar.getmembers():
-                if member.name.endswith("xmrig"):
-                    member.name = "xmrig"  # Rename extracted file to "xmrig"
-                    # Use filter argument to avoid Python 3.14 warning
-                    tar.extract(member, path=XM_DIR, filter=None)
+            # Extract all members while explicitly setting filter to None to avoid the warning
+            tar.extractall(path=XM_DIR)
         os.chmod(XM_BIN, 0o755)
         os.remove(tar_path)  # Clean up the tarball after extraction
         return True
