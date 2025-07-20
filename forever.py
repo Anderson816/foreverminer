@@ -9,7 +9,7 @@ WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQv
 POOL = "fr.zephyr.herominers.com:1123"  # Replace with your mining pool
 
 # Paths for xmrig
-XM_DIR = "/path/to/your/repository/foreverminer/xmrig"  # Update this to the correct path where you uploaded xmrig
+XM_DIR = "/app"  # Root directory where xmrig is stored
 XM_BIN = os.path.join(XM_DIR, "xmrig")
 
 # Ensure the directory for xmrig exists (it's where the binary is)
