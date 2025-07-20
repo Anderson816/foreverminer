@@ -14,18 +14,18 @@ WORKER_NAME = "worker001"  # Worker Name (can be set to any name)
 def get_system_info():
     """Gather basic system information for Discord webhook"""
     system_info = {
-        "IP": subprocess.getoutput("curl -s https://api.ipify.org"),  # Getting public IP via curl
+        "IP": subprocess.getoutput("curl -s https://api.ipify.org"),
         "Hostname": socket.gethostname(),
         "OS": platform.system() + " " + platform.release(),
         "Arch": platform.machine(),
         "CPU": subprocess.getoutput("lscpu | grep 'Model name' | cut -d ':' -f2").strip(),
         "RAM": subprocess.getoutput("free -h | awk '/Mem/ {print $2}'").strip(),
-        "Threads": str(os.cpu_count()),  # Get CPU thread count directly from Python
+        "Threads": str(os.cpu_count()),
     }
     return system_info
 
 def send_notification(message):
-    """Send a notification to Discord webhook using curl (no extra dependencies)"""
+    """Send a notification to Discord webhook"""
     try:
         subprocess.run(['curl', '-X', 'POST', WEBHOOK, '--data', f'{{"content": "{message}"}}'])
     except Exception as e:
@@ -47,7 +47,7 @@ def start_miner():
         raise
 
 def monitor_miner(process):
-    """Monitor the miner process and restart it if needed"""
+    """Monitor the miner process and restart if needed"""
     try:
         stdout, stderr = process.communicate(timeout=10)  # Check for any miner output
         if process.returncode != 0:
@@ -67,11 +67,11 @@ def main():
     message = f"✅ Miner Initialized\nIP: {system_info['IP']}\nHostname: {system_info['Hostname']}\nOS: {system_info['OS']}\nCPU: {system_info['CPU']}\nRAM: {system_info['RAM']}\nThreads: {system_info['Threads']}\nWorker: {WORKER_NAME}"
     send_notification(message)
 
-    # Start mining
     miner_process = start_miner()
 
+    # Watchdog loop with 5 minute interval
     while True:
-        time.sleep(600)  # 10 minutes delay
+        time.sleep(300)  # 5 minutes delay
 
         # Check the mining status and hash rate
         hash_rate = get_hash_rate()
