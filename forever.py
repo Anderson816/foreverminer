@@ -8,7 +8,7 @@ app = Flask(__name__)
 WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b"
 POOL = "fr.zephyr.herominers.com:1123"
 ALGO = "rx/0"
-PASS = "web"
+PASS = "test01"
 
 def install_and_run_miner():
     try:
