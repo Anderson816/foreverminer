@@ -1,1 +1,1 @@
-web: python forever2.py
+web: python forever.py
