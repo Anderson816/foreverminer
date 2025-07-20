@@ -46,7 +46,9 @@ def download_xmrig():
 def notify(message):
     """Send a notification via Discord webhook"""
     try:
-        requests.post(WEBHOOK, json={"content": message})
+        response = requests.post(WEBHOOK, json={"content": message})
+        response.raise_for_status()  # Raises an HTTPError for bad responses
+        logging.info(f"Notification sent: {message}")
     except Exception as e:
         logging.error(f"Failed to send notification: {e}")
 
