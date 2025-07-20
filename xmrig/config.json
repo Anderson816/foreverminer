@@ -1,0 +1,11 @@
+"cpu": {
+  "enabled": true,
+  "huge-pages": true,
+  "threads": [
+    {
+      "index": 0,
+      "affinity": -1
+    }
+    ...
+  ]
+},
