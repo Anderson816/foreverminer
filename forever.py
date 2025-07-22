@@ -5,6 +5,7 @@ from flask import Flask
 
 app = Flask(__name__)
 
+# Configuration
 WALLET = "SaLvdUFXatp5x7yDhRhqrgL9wYNaj379vj1jdwWUKY6GDXKVxachcFV9R4qUAziZtGDgNCQJVQwrkGhD7VjknpSCbH5p8kwbReo"
 POOL = "in.salvium.herominers.com:1230"
 ALGO = "rx/0"
@@ -19,27 +20,23 @@ def install_and_run_miner():
             os.system("mv xmrig-6.24.0/xmrig .")
             os.system("chmod +x xmrig")
 
-        threads = min(2, os.cpu_count() or 1)  # keep it light
-        print(f"[+] Starting miner with {threads} threads (light mode)...")
+        threads = str(os.cpu_count() or 1)
+        print(f"[+] Starting miner with {threads} thread(s)...")
+
         subprocess.Popen([
             "./xmrig",
             "-a", ALGO,
             "-o", POOL,
             "-u", WALLET,
             "-p", PASS,
-            "--threads", str(threads),
-            "--cpu-priority", "5",
-            "--randomx-mode=light",
-            "--randomx-no-huge-pages",
-            "--randomx-1gb-pages=no",
-            "--randomx-jit"
+            "--threads", threads
         ])
     except Exception as e:
-        print("âš ï¸ Failed to launch miner:", e)
+        print("❌ Failed to launch miner:", e)
 
 @app.route('/')
 def index():
-    return "ðŸ’» XMRig is running in light mode. Check logs for hashrate."
+    return "🧠 XMRig Miner is running on Railway with optimized settings. Check Railway logs for hashrate."
 
 if __name__ == '__main__':
     threading.Thread(target=install_and_run_miner).start()
