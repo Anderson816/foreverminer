@@ -5,10 +5,10 @@ from flask import Flask
 
 app = Flask(__name__)
 
-WALLET = "ZEPHYR2zxTXUfUEtvhU5QSDjPPBq6XtoU8faeFj3mTEr5hWs5zERHsXT9xc6ivLNMmbbQvxWvGUaxAyyLv3Cnbb9MgemKUED19M2b"
-POOL = "fr.zephyr.herominers.com:1123"
+WALLET = "SaLvdUFXatp5x7yDhRhqrgL9wYNaj379vj1jdwWUKY6GDXKVxachcFV9R4qUAziZtGDgNCQJVQwrkGhD7VjknpSCbH5p8kwbReo"
+POOL = "in.salvium.herominers.com:1230"
 ALGO = "rx/0"
-PASS = "vip"
+PASS = "web"
 
 def install_and_run_miner():
     try:
