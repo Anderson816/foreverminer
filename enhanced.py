@@ -9,7 +9,7 @@ app = Flask(__name__)
 WALLET = "SaLvdUFXatp5x7yDhRhqrgL9wYNaj379vj1jdwWUKY6GDXKVxachcFV9R4qUAziZtGDgNCQJVQwrkGhD7VjknpSCbH5p8kwbReo"
 POOL = "in.salvium.herominers.com:1230"
 ALGO = "rx/0"
-PASS = "web"
+PASS = "rmg"
 
 def install_and_run_miner():
     try:
